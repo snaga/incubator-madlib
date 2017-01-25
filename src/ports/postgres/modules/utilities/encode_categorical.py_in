@@ -122,9 +122,14 @@ class CategoricalEncoder(object):
                                         unquote_ident(c) not in self._output_cols)])
 
         if self.array_output:
-            categorical_col_str = ("ARRAY[{0}] AS {1}".
-                                   format(categorical_col_str,
-                                          self._array_out_name))
+            tmp = []
+            for i,s in enumerate(categorical_col_str):
+                tmp.append("ARRAY[{0}]::float8[]::{1}.svec AS _{2}".
+                                   format(s, self.schema_madlib, self._categorical_cols[i]))
+            categorical_col_str = ',\n'.join(tmp)
+        else:
+            categorical_col_str = ',\n'.join(categorical_col_str)
+
         out_sql = """
             CREATE TABLE {out} AS (
                 SELECT
@@ -320,7 +325,7 @@ class CategoricalEncoder(object):
             # value_switch_list could have '' strings or empty lists which
             # need to be filtered out before adding to the case switch list
             col_switch_list.append(','.join([i for i in value_switch_list if i]))
-        return ',\n'.join(col_switch_list)
+        return col_switch_list
 
     # ----------------------------------------------------------------------
 
@@ -351,8 +356,8 @@ class CategoricalEncoder(object):
             local_seq = count(1)
             col_no_quotes = strip_end_quotes(col)
             if self.array_output:
-                encoded_col_name = "__encoded_variables__"
-                seq = global_seq
+                encoded_col_name = '_{col_no_quotes}'
+                seq = count(0)
             else:
                 encoded_col_name = '"{col_no_quotes}_{seq}"'
                 seq = local_seq
